@@ -1,7 +1,10 @@
+import os
 import json
+import argparse
 
 import torch
 import torchaudio
+import pandas as pd
 
 from models import EncoderRNN, AttnDecoderRNN, GenderModelPL
 from word2numrus.extractor import NumberExtractor
@@ -84,6 +87,18 @@ def get_gender(spec, model):
     out = int(model(spec).round().item())
     return classes[out]
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('input_path',
+                        help="Path to file to be processed")
+
+    parser.add_argument('output_path',
+                        help="Path to result", default='out.csv', required=False)
+
+    args = parser.parse_args()
+    return args
+
 class Solution():
     def __init__(self):
         with open('embedding.json', 'r', encoding='utf-8') as fp:
@@ -104,8 +119,22 @@ class Solution():
 
         return sex, num
 
+def main():
+    args = parse_args()
+
+    assert os.path.exists(args.input_path)
+    solution = Solution()
+    df = pd.read_csv(args.input_path)
+    dirname_abs = os.path.dirname(os.path.abspath(args.input_path))
+
+    outputs = []
+    for path in df.path:
+        gender, number = solution.process(os.path.join(dirname_abs, path))
+        outputs.append({'path':path, 'number':number})
+
+    pd.DataFrame(outputs).to_csv(args.output_path)
 
 if __name__ == "__main__":
-    solution = Solution()
-    print(solution.process('numbers/test-example/36687b45a7.wav'))
+    main()
+
 
